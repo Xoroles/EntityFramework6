@@ -33,9 +33,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
             var translator = new ExpressionTranslator(commandText, tree, null != tree.Returning, sqlGenerator);
 
@@ -66,7 +66,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 setClause.Property.Accept(translator);
                 commandText.Append(" = ");
                 setClause.Value.Accept(translator);
-            }
+                }
 
             if (first)
             {
@@ -108,15 +108,15 @@ namespace System.Data.Entity.SqlServer.SqlGen
         {
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
-            var translator 
+            var translator
                 = new ExpressionTranslator(
-                    commandText, 
-                    tree, 
-                    false, 
+                    commandText,
+                    tree,
+                    false,
                     sqlGenerator,
                     createParameters: createParameters);
 
@@ -143,9 +143,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
         {
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
             var translator
                 = new ExpressionTranslator(
@@ -689,7 +689,27 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
                 if (_createParameters)
                 {
-                    _commandText.Append(parameter.ParameterName);
+                    if (_sqlGenerator.CharBoolMode && expression.ResultType.EdmType.Name == "Boolean")
+                    {
+                        Facet nullable;
+                        bool isNullable = expression.ResultType.Facets.TryGetValue("Nullable", false, out nullable) && (bool)nullable.Value;
+                        if (isNullable)
+                        {
+                            _commandText.Append("(CASE WHEN ");
+                            _commandText.Append(parameter.ParameterName);
+                            _commandText.Append(" IS NULL THEN NULL ELSE ");
+                        }
+                        _commandText.Append("(CASE WHEN ");
+                        _commandText.Append(parameter.ParameterName);
+                        _commandText.Append(" = 1 ");
+                        _commandText.Append($"THEN '{SqlProviderServices.CharBoolTrueChar}' ELSE '{SqlProviderServices.CharBoolFalseChar}' END) ");
+                        if (isNullable)
+                        {
+                            _commandText.Append("END) ");
+                        }
+                    }
+                    else
+                        _commandText.Append(parameter.ParameterName);
                 }
                 else
                 {
@@ -747,6 +767,8 @@ namespace System.Data.Entity.SqlServer.SqlGen
             public override void Visit(DbPropertyExpression expression)
             {
                 Check.NotNull(expression, "expression");
+
+                _sqlGenerator.CharBoolMode = expression.Property.TypeUsage.EdmType.Name == "charbool";
 
                 if (!string.IsNullOrEmpty(PropertyAlias))
                 {

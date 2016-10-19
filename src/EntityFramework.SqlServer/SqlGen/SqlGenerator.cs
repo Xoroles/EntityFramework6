@@ -268,6 +268,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
         private List<string> _targets;
 
+        internal bool CharBoolMode { get; set; }
         public List<string> Targets
         {
             get { return _targets; }
@@ -889,6 +890,24 @@ namespace System.Data.Entity.SqlServer.SqlGen
                         // Bugs 450277, 430294: Need to preserve the boolean type-ness of
                         // this value for round-trippability
                         WrapWithCastIfNeeded(!isCastOptional, (bool)e.Value ? "1" : "0", "bit", result);
+
+                        if (CharBoolMode)
+                        {
+                            SqlBuilder inner = result;
+                            result = new SqlBuilder();
+                            result.Append("(CASE ");
+                            //result.AppendLine();
+                            result.Append("WHEN ");
+                            result.Append(inner);
+                            result.Append(" <> 0 ");
+                            //result.AppendLine();
+                            result.Append($"THEN '{SqlProviderServices.CharBoolTrueChar}' ");
+                            //result.AppendLine();
+                            result.Append($"ELSE '{SqlProviderServices.CharBoolFalseChar}' ");
+                            //result.AppendLine();
+                            result.Append("END) ");
+                            
+                        }
                         break;
 
                     case PrimitiveTypeKind.Byte:
@@ -1817,7 +1836,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                     }
 
                     var binaryResult = VisitComparisonExpression(" <> ", comparisonExpression.Left, comparisonExpression.Right);
-                    
+
                     _forceNonUnicode = forceNonUnicodeLocal; // Reset flag
                     return binaryResult;
                 }
@@ -2451,6 +2470,57 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 // At this point the column name cannot be renamed, so we do
                 // not use a symbol.
                 result.Append(QuoteIdentifier(e.Property.Name));
+            }
+
+            if (e.Property.TypeUsage.EdmType.Name == "charbool")
+            {//Todo Support Nullable
+                Facet nullable;
+                bool isNullable = e.Property.TypeUsage.Facets.TryGetValue("Nullable", true, out nullable) && (bool)nullable.Value;
+                
+                SqlBuilder inner = result;
+                result = new SqlBuilder();
+                
+                result.Append("CAST(");
+                result.Append("CASE ");
+                //result.AppendLine();
+                result.Append("WHEN (");
+                result.Append(inner);
+                result.Append($" = '{SqlProviderServices.CharBoolTrueChar}') ");
+                //result.AppendLine();
+                result.Append("THEN 1 ");
+                //result.AppendLine();
+                result.Append("ELSE 0 ");
+                //result.AppendLine();
+                result.Append("END ");
+                result.Append("AS ");
+                result.Append("BIT)");
+
+                if (isNullable)
+                {
+                    SqlBuilder notNullInner = result;
+                    result = new SqlBuilder();
+                    result.Append("CAST(");
+                    result.Append("CASE ");
+                    result.Append("WHEN (");
+                    result.Append(inner);
+                    result.Append(" IS NULL)");
+                    result.Append("THEN NULL ");
+                    result.Append("ELSE (");
+                    result.Append(notNullInner);
+                    result.Append(") ");
+                    result.Append("END ");
+                    result.Append("AS ");
+                    result.Append("BIT)");
+                }
+            }
+            else if (e.Property.TypeUsage.EdmType.Name.EndsWith("intbool"))
+            {
+                SqlBuilder inner = result;
+                result = new SqlBuilder();
+                result.Append("CAST(");
+                result.Append(inner);
+                result.Append(" AS ");
+                result.Append("BIT)");
             }
             return result;
         }
@@ -3415,7 +3485,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                     setStatement.Append(separator); // e.g. UNION ALL
                     setStatement.AppendLine();
                 }
-                setStatement.Append(leafSelectStatements[i]);  
+                setStatement.Append(leafSelectStatements[i]);
             }
 
             //This is the common scenario
@@ -4056,9 +4126,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 case DbExpressionKind.Distinct:
                     return result.Select.Top == null
                            && result.Select.Skip == null
-                        // #494803: The projection after distinct may not project all 
-                        // columns used in the Order By
-                        // Improvement: Consider getting rid of the Order By instead
+                           // #494803: The projection after distinct may not project all 
+                           // columns used in the Order By
+                           // Improvement: Consider getting rid of the Order By instead
                            && result.OrderBy.IsEmpty;
 
                 case DbExpressionKind.Filter:
@@ -4086,8 +4156,8 @@ namespace System.Data.Entity.SqlServer.SqlGen
                     // a subset of the input columns
                     return result.Select.IsEmpty
                            && result.GroupBy.IsEmpty
-                        // SQLBUDT #513640 - If distinct is specified, the projection may affect
-                        // the cardinality of the results, thus a new statement must be started.
+                           // SQLBUDT #513640 - If distinct is specified, the projection may affect
+                           // the cardinality of the results, thus a new statement must be started.
                            && !result.Select.IsDistinct;
 
                 case DbExpressionKind.Skip:
@@ -4101,10 +4171,10 @@ namespace System.Data.Entity.SqlServer.SqlGen
                     return result.Select.IsEmpty
                            && result.GroupBy.IsEmpty
                            && result.OrderBy.IsEmpty
-                        // SQLBUDT #513640 - A Project may be on the top of the Sort, and if so, it would need
-                        // to be in the same statement as the Sort (see comment above for the Project case).
-                        // A Distinct in the same statement would prevent that, and therefore if Distinct is present,
-                        // we need to start a new statement. 
+                           // SQLBUDT #513640 - A Project may be on the top of the Sort, and if so, it would need
+                           // to be in the same statement as the Sort (see comment above for the Project case).
+                           // A Distinct in the same statement would prevent that, and therefore if Distinct is present,
+                           // we need to start a new statement. 
                            && !result.Select.IsDistinct;
 
                 default:
