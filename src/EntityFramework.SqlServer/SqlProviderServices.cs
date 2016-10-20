@@ -100,6 +100,8 @@ namespace System.Data.Entity.SqlServer
         private static readonly SqlProviderServices _providerInstance = new SqlProviderServices();
 
         private static bool _truncateDecimalsToScale = true;
+        private static char _charBoolTrueChar = 'Y';
+        private static char _charBoolFalseChar = 'N';
 
         /// <summary>
         /// The Singleton instance of the SqlProviderServices type.
@@ -117,12 +119,13 @@ namespace System.Data.Entity.SqlServer
         /// <summary>
         /// The Char for the Value true of the CharBool Type
         /// </summary>
-        public static char CharBoolTrueChar { get; set; } = 'Y';
+        public static char CharBoolTrueChar { get { return _charBoolTrueChar; } set { _charBoolTrueChar = value; } }
 
         /// <summary>
         /// The Char for the Value false of the CharBool Type
         /// </summary>
-        public static char CharBoolFalseChar { get; set; } = 'N';
+        public static char CharBoolFalseChar { get { return _charBoolFalseChar; } set { _charBoolFalseChar = value; } }
+
         /// <summary>
         /// Set this flag to false to prevent <see cref="decimal" /> values from being truncated to
         /// the scale (number of decimal places) defined for the column. The default value is true,

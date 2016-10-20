@@ -901,9 +901,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
                             result.Append(inner);
                             result.Append(" <> 0 ");
                             //result.AppendLine();
-                            result.Append($"THEN '{SqlProviderServices.CharBoolTrueChar}' ");
+                            result.Append(string.Format(CultureInfo.InvariantCulture, "THEN '{0}' ", SqlProviderServices.CharBoolTrueChar));
                             //result.AppendLine();
-                            result.Append($"ELSE '{SqlProviderServices.CharBoolFalseChar}' ");
+                            result.Append(string.Format(CultureInfo.InvariantCulture, "ELSE '{0}' ", SqlProviderServices.CharBoolFalseChar));
                             //result.AppendLine();
                             result.Append("END) ");
                             
@@ -2471,10 +2471,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 // not use a symbol.
                 result.Append(QuoteIdentifier(e.Property.Name));
             }
-
+            Facet nullable;
             if (e.Property.TypeUsage.EdmType.Name == "charbool")
-            {//Todo Support Nullable
-                Facet nullable;
+            {
                 bool isNullable = e.Property.TypeUsage.Facets.TryGetValue("Nullable", true, out nullable) && (bool)nullable.Value;
                 
                 SqlBuilder inner = result;
@@ -2485,7 +2484,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 //result.AppendLine();
                 result.Append("WHEN (");
                 result.Append(inner);
-                result.Append($" = '{SqlProviderServices.CharBoolTrueChar}') ");
+                result.Append(string.Format(CultureInfo.InvariantCulture," = '{0}') ", SqlProviderServices.CharBoolTrueChar));
                 //result.AppendLine();
                 result.Append("THEN 1 ");
                 //result.AppendLine();
@@ -2513,14 +2512,29 @@ namespace System.Data.Entity.SqlServer.SqlGen
                     result.Append("BIT)");
                 }
             }
-            else if (e.Property.TypeUsage.EdmType.Name.EndsWith("intbool"))
+            else if (e.Property.TypeUsage.EdmType.Name == "intbool")
             {
+                bool isNullable = e.Property.TypeUsage.Facets.TryGetValue("Nullable", true, out nullable) && (bool)nullable.Value;
+
                 SqlBuilder inner = result;
                 result = new SqlBuilder();
-                result.Append("CAST(");
-                result.Append(inner);
-                result.Append(" AS ");
-                result.Append("BIT)");
+
+                if (!isNullable)
+                {
+                    result.Append("ISNULL(");
+                    result.Append("CAST(");
+                    result.Append(inner);
+                    result.Append(" AS ");
+                    result.Append("BIT)");
+                    result.Append(" ,0)");
+                }
+                else
+                {
+                    result.Append("CAST(");
+                    result.Append(inner);
+                    result.Append(" AS ");
+                    result.Append("BIT)");
+                }
             }
             return result;
         }

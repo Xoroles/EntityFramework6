@@ -702,7 +702,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                         _commandText.Append("(CASE WHEN ");
                         _commandText.Append(parameter.ParameterName);
                         _commandText.Append(" = 1 ");
-                        _commandText.Append($"THEN '{SqlProviderServices.CharBoolTrueChar}' ELSE '{SqlProviderServices.CharBoolFalseChar}' END) ");
+                        _commandText.Append(string.Format(CultureInfo.InvariantCulture, "THEN '{0}' ELSE '{1}' END) ", SqlProviderServices.CharBoolTrueChar, SqlProviderServices.CharBoolFalseChar));
                         if (isNullable)
                         {
                             _commandText.Append("END) ");
