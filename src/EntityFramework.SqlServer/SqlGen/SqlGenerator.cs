@@ -268,6 +268,8 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
         private List<string> _targets;
 
+        internal readonly IDictionary<int,bool> CharBoolModes = new Dictionary<int, bool>();
+        internal int CurrentColumn = 0;
         internal bool CharBoolMode { get; set; }
         public List<string> Targets
         {
