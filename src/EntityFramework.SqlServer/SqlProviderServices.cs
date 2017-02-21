@@ -44,7 +44,7 @@ namespace System.Data.Entity.SqlServer
     /// services for SQL Server.
     /// </remarks>
     [SuppressMessage("Microsoft.Maintainability", "CA1506:AvoidExcessiveClassCoupling")]
-    public sealed class SqlProviderServices : DbProviderServices
+    public class SqlProviderServices : DbProviderServices
     {
         /// <summary>
         /// This is the well-known string using in configuration files and code-based configuration as
@@ -447,25 +447,25 @@ namespace System.Data.Entity.SqlServer
         /// <summary>
         /// Returns the provider manifest by using the specified version information.
         /// </summary>
-        /// <param name="versionHint"> The token information associated with the provider manifest. </param>
+        /// <param name="manifestToken"> The token information associated with the provider manifest. </param>
         /// <returns> The provider manifest by using the specified version information. </returns>
-        protected override DbProviderManifest GetDbProviderManifest(string versionHint)
+        protected override DbProviderManifest GetDbProviderManifest(string manifestToken)
         {
-            if (string.IsNullOrEmpty(versionHint))
+            if (string.IsNullOrEmpty(manifestToken))
             {
                 throw new ArgumentException(Strings.UnableToDetermineStoreVersion);
             }
 
-            return _providerManifests.GetOrAdd(versionHint, s => new SqlProviderManifest(s));
+            return _providerManifests.GetOrAdd(manifestToken, s => new SqlProviderManifest(s));
         }
 
         /// <summary>
         /// Gets a spatial data reader for SQL Server.
         /// </summary>
         /// <param name="fromReader"> The reader where the spatial data came from. </param>
-        /// <param name="versionHint"> The manifest token associated with the provider manifest. </param>
+        /// <param name="manifestToken"> The manifest token associated with the provider manifest. </param>
         /// <returns> The spatial data reader. </returns>
-        protected override DbSpatialDataReader GetDbSpatialDataReader(DbDataReader fromReader, string versionHint)
+        protected override DbSpatialDataReader GetDbSpatialDataReader(DbDataReader fromReader, string manifestToken)
         {
             var underlyingReader = fromReader as SqlDataReader;
             if (underlyingReader == null)
@@ -473,9 +473,9 @@ namespace System.Data.Entity.SqlServer
                 throw new ProviderIncompatibleException(Strings.SqlProvider_NeedSqlDataReader(fromReader.GetType()));
             }
 
-            return SupportsSpatial(versionHint)
+            return SupportsSpatial(manifestToken)
                        ? new SqlSpatialDataReader(
-                             GetSpatialServices(new DbProviderInfo(ProviderInvariantName, versionHint)),
+                             GetSpatialServices(new DbProviderInfo(ProviderInvariantName, manifestToken)),
                              new SqlDataReaderWrapper(underlyingReader))
                        : null;
         }
@@ -1496,20 +1496,46 @@ namespace System.Data.Entity.SqlServer
         /// Clones the connection.
         /// </summary>
         /// <param name="connection">The original connection.</param>
+        /// <returns>Cloned connection</returns>
+        public virtual DbConnection CloneDbConnection(DbConnection connection)
+        {
+            return CloneDbConnection(connection, GetProviderFactory(connection));
+        }
+
+        /// <summary>
+        /// Clones the connection.
+        /// </summary>
+        /// <param name="connection">The original connection.</param>
         /// <param name="factory">The factory to use.</param>
         /// <returns>Cloned connection</returns>
-        public override DbConnection CloneDbConnection(DbConnection connection, DbProviderFactory factory)
+        public virtual DbConnection CloneDbConnection(DbConnection connection, DbProviderFactory factory)
         {
             DebugCheck.NotNull(connection);
             DebugCheck.NotNull(factory);
 
-            var clonableConnection = connection as ICloneable;
-            if (clonableConnection != null)
-            {
-                return (DbConnection)clonableConnection.Clone();
-            }
-
-            return base.CloneDbConnection(connection, factory);
+            return factory.CreateConnection();
         }
+
+        ///// <summary>
+        ///// Clones the connection.
+        ///// </summary>
+        ///// <param name="connection">The original connection.</param>
+        ///// <param name="factory">The factory to use.</param>
+        ///// <returns>Cloned connection</returns>
+        //public DbConnection CloneDbConnection(DbConnection connection, DbProviderFactory factory)
+        //{
+        //    DebugCheck.NotNull(connection);
+        //    DebugCheck.NotNull(factory);
+
+        //    var clonableConnection = connection as ICloneable;
+        //    if (clonableConnection != null)
+        //    {
+        //        return (DbConnection)clonableConnection.Clone();
+        //    }
+
+        //    return base.CloneDbConnection(connection, factory);
+        //}
+
+
     }
 }
