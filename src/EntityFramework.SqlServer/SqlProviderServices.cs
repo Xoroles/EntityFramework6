@@ -100,6 +100,8 @@ namespace System.Data.Entity.SqlServer
         private static readonly SqlProviderServices _providerInstance = new SqlProviderServices();
 
         private static bool _truncateDecimalsToScale = true;
+        private static char _charBoolTrueChar = 'Y';
+        private static char _charBoolFalseChar = 'N';
 
         /// <summary>
         /// The Singleton instance of the SqlProviderServices type.
@@ -113,6 +115,16 @@ namespace System.Data.Entity.SqlServer
         /// Set to the full name of the Microsoft.SqlServer.Types assembly to override the default selection
         /// </summary>
         public static string SqlServerTypesAssemblyName { get; set; }
+
+        /// <summary>
+        /// The Char for the Value true of the CharBool Type
+        /// </summary>
+        public static char CharBoolTrueChar { get { return _charBoolTrueChar; } set { _charBoolTrueChar = value; } }
+
+        /// <summary>
+        /// The Char for the Value false of the CharBool Type
+        /// </summary>
+        public static char CharBoolFalseChar { get { return _charBoolFalseChar; } set { _charBoolFalseChar = value; } }
 
         /// <summary>
         /// Set this flag to false to prevent <see cref="decimal" /> values from being truncated to

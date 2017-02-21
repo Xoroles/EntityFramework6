@@ -382,7 +382,12 @@ namespace System.Data.Entity.SqlServer
                     isUnicode = false;
                     isFixedLen = true;
                     break;
-
+                case "charbool":
+                case "tinyintbool":
+                case "intbool":
+                case "smallintbool":
+                case "bigintbool":
+                    return TypeUsage.CreateDefaultTypeUsage(edmPrimitiveType);
                 case "nvarchar":
                     newPrimitiveTypeKind = PrimitiveTypeKind.String;
                     isUnbounded = !storeType.TryGetMaxLength(out maxLength);

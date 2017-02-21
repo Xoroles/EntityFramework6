@@ -33,9 +33,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
             var translator = new ExpressionTranslator(commandText, tree, null != tree.Returning, sqlGenerator);
 
@@ -53,8 +53,10 @@ namespace System.Data.Entity.SqlServer.SqlGen
             // set c1 = ..., c2 = ..., ...
             var first = true;
             commandText.AppendKeyword("set ");
+            int h = 0;
             foreach (DbSetClause setClause in tree.SetClauses)
             {
+                sqlGenerator.CurrentColumn = h++;
                 if (first)
                 {
                     first = false;
@@ -66,7 +68,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 setClause.Property.Accept(translator);
                 commandText.Append(" = ");
                 setClause.Value.Accept(translator);
-            }
+                }
 
             if (first)
             {
@@ -108,15 +110,15 @@ namespace System.Data.Entity.SqlServer.SqlGen
         {
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
-            var translator 
+            var translator
                 = new ExpressionTranslator(
-                    commandText, 
-                    tree, 
-                    false, 
+                    commandText,
+                    tree,
+                    false,
                     sqlGenerator,
                     createParameters: createParameters);
 
@@ -132,7 +134,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
             parameters = translator.Parameters;
             return commandText.ToString();
         }
-
+        
         internal static string GenerateInsertSql(
             DbInsertCommandTree tree,
             SqlGenerator sqlGenerator,
@@ -143,9 +145,9 @@ namespace System.Data.Entity.SqlServer.SqlGen
         {
             var commandText
                 = new SqlStringBuilder(CommandTextBuilderInitialCapacity)
-                      {
-                          UpperCaseKeywords = upperCaseKeywords
-                      };
+                {
+                    UpperCaseKeywords = upperCaseKeywords
+                };
 
             var translator
                 = new ExpressionTranslator(
@@ -197,14 +199,16 @@ namespace System.Data.Entity.SqlServer.SqlGen
             // insert [schemaName].[tableName]
             commandText.AppendKeyword("insert ");
             tree.Target.Expression.Accept(translator);
-
+            sqlGenerator.CharBoolModes.Clear();
             if (0 < tree.SetClauses.Count)
             {
                 // (c1, c2, c3, ...)
                 commandText.Append("(");
                 var first = true;
+                int h = 0;
                 foreach (DbSetClause setClause in tree.SetClauses)
                 {
+                    sqlGenerator.CurrentColumn = h++;
                     if (first)
                     {
                         first = false;
@@ -250,8 +254,10 @@ namespace System.Data.Entity.SqlServer.SqlGen
                 // values c1, c2, ...
                 var first = true;
                 commandText.AppendKeyword("values (");
+                int h = 0;
                 foreach (DbSetClause setClause in tree.SetClauses)
                 {
+                    sqlGenerator.CurrentColumn = h++;
                     if (first)
                     {
                         first = false;
@@ -261,7 +267,7 @@ namespace System.Data.Entity.SqlServer.SqlGen
                         commandText.Append(", ");
                     }
                     setClause.Value.Accept(translator);
-
+                    
                     translator.RegisterMemberValue(setClause.Property, setClause.Value);
                 }
                 commandText.AppendLine(")");
@@ -689,7 +695,27 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
                 if (_createParameters)
                 {
-                    _commandText.Append(parameter.ParameterName);
+                    if (_sqlGenerator.CharBoolModes[_sqlGenerator.CurrentColumn] && expression.ResultType.EdmType.Name == "Boolean")
+                    {
+                        Facet nullable;
+                        bool isNullable = expression.ResultType.Facets.TryGetValue("Nullable", false, out nullable) && (bool)nullable.Value;
+                        if (isNullable)
+                        {
+                            _commandText.Append("(CASE WHEN ");
+                            _commandText.Append(parameter.ParameterName);
+                            _commandText.Append(" IS NULL THEN NULL ELSE ");
+                        }
+                        _commandText.Append("(CASE WHEN ");
+                        _commandText.Append(parameter.ParameterName);
+                        _commandText.Append(" = 1 ");
+                        _commandText.Append(string.Format(CultureInfo.InvariantCulture, "THEN '{0}' ELSE '{1}' END) ", SqlProviderServices.CharBoolTrueChar, SqlProviderServices.CharBoolFalseChar));
+                        if (isNullable)
+                        {
+                            _commandText.Append("END) ");
+                        }
+                    }
+                    else
+                        _commandText.Append(parameter.ParameterName);
                 }
                 else
                 {
@@ -747,6 +773,8 @@ namespace System.Data.Entity.SqlServer.SqlGen
             public override void Visit(DbPropertyExpression expression)
             {
                 Check.NotNull(expression, "expression");
+
+                _sqlGenerator.CharBoolModes[_sqlGenerator.CurrentColumn] = expression.Property.TypeUsage.EdmType.Name == "charbool";
 
                 if (!string.IsNullOrEmpty(PropertyAlias))
                 {
