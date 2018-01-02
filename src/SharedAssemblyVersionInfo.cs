@@ -5,7 +5,7 @@ using System.Resources;
 
 #if !BUILD_GENERATED_VERSION
 [assembly: AssemblyVersion("6.0.0.0")]
-[assembly: AssemblyFileVersion("6.1.8.0")]
-[assembly: AssemblyInformationalVersion("6.1.8")]
+[assembly: AssemblyFileVersion("6.1.9.0")]
+[assembly: AssemblyInformationalVersion("6.1.9")]
 [assembly: SatelliteContractVersion("6.0.0.0")]
 #endif

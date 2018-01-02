@@ -2523,12 +2523,12 @@ namespace System.Data.Entity.SqlServer.SqlGen
 
                 if (!isNullable)
                 {
-                    result.Append("ISNULL(");
                     result.Append("CAST(");
+                    result.Append("ISNULL(");
                     result.Append(inner);
+                    result.Append(" ,0)");
                     result.Append(" AS ");
                     result.Append("BIT)");
-                    result.Append(" ,0)");
                 }
                 else
                 {
